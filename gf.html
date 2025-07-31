@@ -27,54 +27,17 @@
   </style>
 </head>
 <body>
-  <!-- Replace 'YOUR_DEEPSEEK_API_KEY' with your actual API key -->
-  <script>
-    const DEEPSEEK_API_KEY = 'sk-1bb02e160c734972bbb9514ede29a3f0';
-    const DEEPSEEK_BASE_URL = 'https://api.deepseek.com';
-    const fallbackHints = {
-      scramble: `Try rearranging the letters to form common words—look for prefixes or suffixes to help!`,
-      memory: 'Hint: find two identical heart icons in succession.',
-      statute: 'Hint: match each term logically: Objection = protest; Sustained = allowed; Overruled = disallowed.',
-      cross: 'Hint: chocolate fingerprints point to the sweetest clue.'
-    };
-
-    async function getDeepSeekHint(puzzleType, data = {}) {
-      try {
-        const systemPrompt =
-          `You are a playful, flirty hint assistant for the web game "Case of the Missing Heart"—a mystery-style puzzle celebrating National Girlfriend Day.`;
-        const userPrompt =
-          `Puzzle type: ${puzzleType}. Data: ${JSON.stringify(data)}. Provide a concise, cute hint.`;
-
-        const res = await fetch(`${DEEPSEEK_BASE_URL}/chat/completions`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${DEEPSEEK_API_KEY}`
-          },
-          body: JSON.stringify({
-            model: 'deepseek-chat',
-            messages: [
-              { role: 'system', content: systemPrompt },
-              { role: 'user', content: userPrompt }
-            ],
-            stream: false
-          })
-        });
-        if (!res.ok) throw new Error('Network response not ok');
-        const json = await res.json();
-        const hint = json.choices?.[0]?.message?.content?.trim();
-        return hint || fallbackHints[puzzleType];
-      } catch (e) {
-        console.warn('DeepSeek hint failed:', e);
-        return fallbackHints[puzzleType];
-      }
-    }
-  </script>
 
   <div id="opening" class="section visible">
     <h1>The Case of the Missing Heart</h1>
     <p>Someone's stolen your heart—let’s reveal the culprit!</p>
-    <button class="btn" onclick="nextSection('puzzle1')">Begin Your Defense</button>
+    <p>
+      <input type="text" id="gf-name" placeholder="Your name" />
+    </p>
+    <p>
+      <input type="password" id="api-key" placeholder="DeepSeek API Key" />
+    </p>
+    <button class="btn" onclick="startGame()">Begin Your Defense</button>
   </div>
 
   <div id="puzzle1" class="section">
@@ -134,76 +97,41 @@
     <p id="cross-hint" class="hint-text"></p>
     <p id="cross-msg"></p>
   </div>
+  <div id="timeline" class="section">
+    <h2>Timeline Trivia</h2>
+    <p>Enter the dates that match each milestone:</p>
+    <p>First message: <input type="date" id="date-msg" /></p>
+    <p>First meet/kiss: <input type="date" id="date-meet" /></p>
+    <p>Said "I love you": <input type="date" id="date-love" /></p>
+    <p>Asked to be my GF: <input type="date" id="date-ask" /></p>
+    <button class="btn" onclick="checkTimeline()">Submit</button>
+    <button class="btn hint-btn" onclick="showHint('timeline')">Hint</button>
+    <p id="timeline-hint" class="hint-text"></p>
+    <p id="timeline-msg"></p>
+  </div>
+
+  <div id="travel" class="section">
+    <h2>Travel Map</h2>
+    <p>Which states did we visit together?</p>
+    <label><input type="checkbox" name="state" value="TN"> Tennessee</label><br>
+    <label><input type="checkbox" name="state" value="NV"> Nevada</label><br>
+    <label><input type="checkbox" name="state" value="NY"> New York</label><br>
+    <label><input type="checkbox" name="state" value="IL"> Illinois</label><br>
+    <label><input type="checkbox" name="state" value="CA"> California</label><br>
+    <button class="btn" onclick="checkTravel()">Submit</button>
+    <button class="btn hint-btn" onclick="showHint('travel')">Hint</button>
+    <p id="travel-hint" class="hint-text"></p>
+    <p id="travel-msg"></p>
+  </div>
+
 
   <div id="verdict" class="section">
     <h2>Verdict: <span style="color:#e63946">Guilty</span> (of Love!)</h2>
-    <p>Objection overruled – you stole my heart!</p>
+    <p id="final-msg">Objection overruled – you stole my heart!</p>
     <button class="btn" onclick="downloadCert()">Download Your Certificate of Love</button>
   </div>
-
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-  <script>
-    function nextSection(id) {
-      document.querySelectorAll('.section').forEach(s => s.classList.remove('visible'));
-      document.getElementById(id).classList.add('visible');
-      if (id === 'puzzle2') initMemory();
-    }
-    async function showHint(type) {
-      let data = {};
-      if (type === 'scramble') {
-        data.scrambled = 'yuo ertocolle ievl <3';
-        data.guess = document.getElementById('scramble-input').value;
-      }
-      const hint = await getDeepSeekHint(type, data);
-      document.getElementById(`${type}-hint`).textContent = hint;
-    }
-    function checkScramble() {
-      const input = document.getElementById('scramble-input').value.trim().toLowerCase();
-      const correct = 'you recollect evil <3';
-      if (input === correct) { document.getElementById('scramble-msg').textContent = 'Correct!'; setTimeout(() => nextSection('puzzle2'), 1000); }
-      else { document.getElementById('scramble-msg').textContent = 'Try again.'; }
-    }
-    let firstCard, secondCard, lock = false, matches = 0;
-    function initMemory() {
-      const grid = document.getElementById('memory-grid'); grid.innerHTML = '';
-      ['💖','💖','💕','💕','❤️','❤️','💗','💗'].sort(() => 0.5 - Math.random()).forEach(icon => {
-        const card = document.createElement('div'); card.className = 'card'; card.dataset.icon = icon;
-        card.addEventListener('click', flipCard);
-        grid.appendChild(card);
-      }); matches = 0;
-    }
-    function flipCard() {
-      if (lock || this === firstCard) return;
-      this.textContent = this.dataset.icon;
-      if (!firstCard) { firstCard = this; return; }
-      secondCard = this; lock = true;
-      if (firstCard.dataset.icon === secondCard.dataset.icon) { matches++; resetMatch(); }
-      else { setTimeout(() => { firstCard.textContent = ''; secondCard.textContent = ''; resetMatch(); }, 800); }
-      if (matches === 4) setTimeout(() => nextSection('puzzle3'), 500);
-    }
-    function resetMatch() { [firstCard, secondCard, lock] = [null, null, false]; }
-    let dragged;
-    document.querySelectorAll('.def').forEach(def => def.addEventListener('dragstart', e => dragged = e.target));
-    document.querySelectorAll('.term').forEach(term => { term.addEventListener('dragover', e => e.preventDefault()); term.addEventListener('drop', e => { e.preventDefault(); term.appendChild(dragged); term.dataset.def = dragged.textContent; }); });
-    function checkStatute() {
-      const mapping = { 'Objection': 'A lawyer protests a question’s validity', 'Sustained': 'A judge agrees the question is allowed', 'Overruled': 'A judge disallows a lawyer’s protest' };
-      const correctCount = Array.from(document.querySelectorAll('.term')).filter(t => t.dataset.def === mapping[t.dataset.term]).length;
-      if (correctCount === 3) { document.getElementById('statute-msg').textContent = 'All set!'; setTimeout(() => nextSection('crossExam'), 1000); }
-      else { document.getElementById('statute-msg').textContent = 'Check your matches.'; }
-    }
-    function checkCross() {
-      const sel = document.querySelector('input[name="q"]:checked'); if (!sel) return alert('Please choose an option.');
-      if (sel.value === '1') { document.getElementById('cross-msg').textContent = 'Correct!'; setTimeout(() => nextSection('verdict'), 1000); }
-      else { document.getElementById('cross-msg').textContent = 'Not quite, try again.'; }
-    }
-    function showObjection() { alert('Objection sustained – you’re too cute! ❤️'); }
-    async function downloadCert() {
-      const { jsPDF } = window.jspdf;
-      const doc = new jsPDF(); doc.setFontSize(22); doc.text('Certificate of Love', 20, 30);
-      doc.setFontSize(16); doc.text('This certifies that you have successfully proven your love.', 20, 50);
-      doc.text('Date: ' + new Date().toLocaleDateString(), 20, 70);
-      doc.save('Certificate_of_Love.pdf');
-    }
-  </script>
+  <script src="script.js"></script>
+
 </body>
 </html>
