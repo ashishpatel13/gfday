@@ -2,6 +2,8 @@
 let GF_NAME = 'Your Girlfriend';
 let DEEPSEEK_API_KEY = '';
 const DEEPSEEK_BASE_URL = 'https://api.deepseek.com';
+const STEPS = ['puzzle1','puzzle2','puzzle3','crossExam','timeline','travel','verdict'];
+let currentStep = 0;
 const fallbackHints = {
   scramble: `Try rearranging the letters to form common words—look for prefixes or suffixes to help!`,
   memory: 'Hint: find two identical heart icons in succession.',
@@ -46,7 +48,9 @@ async function getDeepSeekHint(puzzleType, data = {}) {
 function startGame() {
   GF_NAME = document.getElementById('gf-name').value.trim() || 'Your Girlfriend';
   DEEPSEEK_API_KEY = document.getElementById('api-key').value.trim();
-  nextSection('puzzle1');
+  currentStep = 0;
+  updateProgress();
+  nextSection(STEPS[currentStep]);
 }
 
 function personalize() {
@@ -58,6 +62,16 @@ function nextSection(id) {
   document.getElementById(id).classList.add('visible');
   if (id === 'puzzle2') initMemory();
   if (id === 'verdict') personalize();
+  const stepIndex = STEPS.indexOf(id);
+  if (stepIndex >= 0) {
+    currentStep = stepIndex;
+    updateProgress();
+  }
+}
+
+function updateProgress() {
+  const percent = (currentStep / (STEPS.length - 1)) * 100;
+  document.getElementById('bar').style.width = percent + '%';
 }
 
 async function showHint(type) {
